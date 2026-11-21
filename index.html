@@ -434,7 +434,7 @@ function render(c, v) {
 
   /* --- legend --- */
   if (S.LEGEND && (v.exporting || legendOn)) {
-    const ranks = Object.keys(RANK_STYLE).filter(r => nodes.some(n => n.rank === r));
+    const ranks = Object.keys(RANK_STYLE).filter(r => r !== "Ancestor" && nodes.some(n => n.rank === r));
     const hasPartner = nodes.some(n => n.partnerNode);
     const rows = ranks.length + (hasPartner ? 1 : 0);
     const rh = v.narrow ? 16 : 20, lwid = v.narrow ? 118 : 150, lh = 12 + rows * rh, lx = W - lwid - 10, ly = H - lh - (v.exporting ? 10 : 44);
