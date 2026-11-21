@@ -85,48 +85,47 @@ const SETTINGS = {
    partner = a second lineage that joined through endosymbiosis (dashed line from its box)
    species = representative species; its picture is images/<genus>-<first two letters of species>-tree.webp (or .png)
              groups without a species use images/<group>-xx-tree
-   link    = page that opens from the group's card                                                        */
+   link    = only needed if the group's page breaks the usual pattern. Normally the page is worked out from the
+             groups above it in the same domain, e.g. encyclopedia/omnisedia/xenotheria/minovenatoria
+   speciesPage = true when the representative species has its own page under the group's page           */
 const SITE = "https://sites.google.com/view/project-azur/";
 const GROUPS = [
   { name: "Protovidea",    rank: "Ancestor", domain: "Protovidea", meaning: "The first to see", start: 3800, col: 3,
     note: "The last universal common ancestor (LUCA) of all Azurian life.", link: SITE + "the-first-three-eons/primomundus" },
 
   { name: "Heliosedia",    rank: "Domain",  domain: "Heliosedia", meaning: "Light-dwellers", start: 3700, parent: "Protovidea", side: "left", col: 1,
-    species: "Parvuscula heliopigmentum", link: SITE + "encyclopedia/heliosedia" },
+    species: "Parvuscula heliopigmentum" },
   { name: "Photophagia",   rank: "Kingdom", domain: "Heliosedia", meaning: "Light consumers", start: 2900, parent: "Heliosedia", side: "left", col: 0,
-    species: "Photobulbia magnaoxygena", link: SITE + "encyclopedia/heliosedia/photophagia", speciesLink: SITE + "encyclopedia/heliosedia/photophagia/photobulbia-magnaoxygena" },
+    species: "Photobulbia magnaoxygena", speciesPage: true },
   { name: "Meiophagia",    rank: "Kingdom", domain: "Heliosedia", meaning: "Lesser consumers", start: 2950, parent: "Heliosedia", side: "right", col: 2,
-    species: "Venatropha prima", link: SITE + "encyclopedia/heliosedia/meiophagia" },
+    species: "Venatropha prima" },
 
   { name: "Bathosedia",    rank: "Domain",  domain: "Bathosedia", meaning: "Deep-dwellers", start: 3700, parent: "Protovidea", side: "right", col: 5,
-    species: "Thiovulcanus pusillus", link: SITE + "encyclopedia/bathosedia" },
-  { name: "Sulfurphagia",  rank: "Kingdom", domain: "Bathosedia", meaning: "Sulfur consumers", start: 3200, parent: "Bathosedia", side: "left", col: 4,
-    link: SITE + "encyclopedia/bathosedia/sulfurphagia" },
+    species: "Thiovulcanus pusillus" },
+  { name: "Sulfurphagia",  rank: "Kingdom", domain: "Bathosedia", meaning: "Sulfur consumers", start: 3200, parent: "Bathosedia", side: "left", col: 4 },
   { name: "Methanophagia", rank: "Kingdom", domain: "Bathosedia", meaning: "Methane consumers", start: 3200, parent: "Bathosedia", side: "right", col: 6,
-    species: "Methanarcha simplex", link: SITE + "encyclopedia/bathosedia/methanophagia" },
+    species: "Methanarcha simplex" },
   { name: "Nitrophagia",   rank: "Kingdom", domain: "Bathosedia", meaning: "Nitrogen consumers", start: 3200, parent: "Bathosedia", side: "right", col: 7.2,
-    species: "Nitrophyx minor", link: SITE + "encyclopedia/bathosedia" },
+    species: "Nitrophyx minor" },
 
   { name: "Omnisedia",     rank: "Domain",  domain: "Omnisedia", meaning: "All-dwellers", start: 2500, parent: "Meiophagia", side: "right", col: 2,
     partner: "Sulfurphagia", partnerLabel: "Meiophagia-Sulfurphagia endosymbiosis",
-    species: "Megalocyta vorax", note: "A large Meiophagian swallowed a Sulfurphagian that survived inside it.", link: SITE + "encyclopedia/omnisedia" },
+    species: "Megalocyta vorax", note: "A large Meiophagian swallowed a Sulfurphagian that survived inside it." },
   { name: "Xenotheria",    rank: "Kingdom", domain: "Omnisedia", meaning: "Alien beasts", start: 2300, parent: "Omnisedia", side: "right", col: 3,
-    species: "Vorocyta coccinea", link: SITE + "encyclopedia/omnisedia/xenotheria", speciesLink: SITE + "encyclopedia/omnisedia/xenotheria/vorocyta-coccinea" },
+    species: "Vorocyta coccinea", speciesPage: true },
   { name: "Minovenatoria", rank: "Phylum",  domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4.2,
-    species: "Amorphothera velox", link: SITE + "encyclopedia/omnisedia/xenotheria/minovenatoria", speciesLink: SITE + "encyclopedia/omnisedia/xenotheria/minovenatoria/amorphothera-velox" },
+    species: "Amorphothera velox", speciesPage: true },
   { name: "Cyanostromia",  rank: "Kingdom", domain: "Omnisedia", meaning: "Blue mats", start: 2000, parent: "Omnisedia", side: "left", col: 2,
     partner: "Photophagia", partnerLabel: "Photophagia-Omnisedia endosymbiosis",
-    species: "Octocyta marina", note: "Basal Omnisedians took in Photophagians, which became their azuroplasts.", link: SITE + "encyclopedia/omnisedia/cyanostromia", speciesLink: SITE + "encyclopedia/omnisedia/cyanostromia/octocyta-marina" },
-  { name: "Aquasilvia",    rank: "Phylum",  domain: "Omnisedia", meaning: "Water forests", start: 1000, parent: "Cyanostromia", side: "left", col: 2,
-    link: SITE + "encyclopedia/omnisedia" },
+    species: "Octocyta marina", note: "Basal Omnisedians took in Photophagians, which became their azuroplasts.", speciesPage: true },
+  { name: "Aquasilvia",    rank: "Phylum",  domain: "Omnisedia", meaning: "Water forests", start: 1000, parent: "Cyanostromia", side: "left", col: 2 },
 
   { name: "Necrosedia",    rank: "Domain",  domain: "Necrosedia", meaning: "Death-dwellers", start: 2500, parent: "Methanophagia", side: "right", col: 6,
     partner: "Meiophagia", partnerLabel: "Meiophagia-Methanophagia endosymbiosis",
-    species: "Saprocyta primaeva", note: "Small Meiophagians invaded a Methanophagian host and became its paraorganelles.", link: SITE + "encyclopedia/necrosedia" },
+    species: "Saprocyta primaeva", note: "Small Meiophagians invaded a Methanophagian host and became its paraorganelles." },
   { name: "Psammothecia",  rank: "Clade",   domain: "Necrosedia", meaning: "Sand shells", start: 2000, parent: "Necrosedia", side: "right", col: 7,
-    species: "Arenotheca gigantea", link: SITE + "encyclopedia/necrosedia/psammothecia", speciesLink: SITE + "encyclopedia/necrosedia/psammothecia/arenotheca-gigantea" },
-  { name: "Thanospeira",   rank: "Kingdom", domain: "Necrosedia", meaning: "Death spirals", start: 760, parent: "Necrosedia", side: "right", col: 6,
-    link: SITE + "encyclopedia/necrosedia" }
+    species: "Arenotheca gigantea", speciesPage: true },
+  { name: "Thanospeira",   rank: "Kingdom", domain: "Necrosedia", meaning: "Death spirals", start: 760, parent: "Necrosedia", side: "right", col: 6 }
 ];
 
 /* ===== MARKERS: events on a lineage that are not new groups ===== */
@@ -191,6 +190,16 @@ nodes.forEach(n => {
   n.x = PAD_X + n.col * COL_W + COL_W / 2;
   n.partnerNode = n.partner && node[n.partner] ? node[n.partner] : null;
   n.marks = MARKERS.filter(m => m.on === n.name && m.time >= UNTIL && m.time < n.start);
+});
+/* Encyclopedia pages follow the group names: encyclopedia/<domain>/<kingdom>/<phylum>... */
+const slug = t => t.toLowerCase().trim().replace(/\s+/g, "-");
+function pagePath(g) {
+  const p = byName[g.parent];
+  return (p && p.domain === g.domain ? pagePath(p) + "/" : "") + slug(g.name);
+}
+nodes.forEach(n => {
+  if (!n.link) n.link = SITE + "encyclopedia/" + pagePath(n);
+  if (n.species && n.speciesPage) n.speciesLink = n.link + "/" + slug(n.species);
 });
 /* a line only leads to what the group evolved into: its youngest branch, or a marker such as the first animals */
 nodes.forEach(n => {
