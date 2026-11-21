@@ -104,7 +104,7 @@ const GROUPS = [
     link: SITE + "encyclopedia/bathosedia" },
   { name: "Methanophagia", rank: "Kingdom", domain: "Bathosedia", meaning: "Methane consumers", start: 3200, parent: "Bathosedia", side: "right", col: 6,
     species: "Methanarcha simplex", link: SITE + "encyclopedia/bathosedia" },
-  { name: "Nitrophagia",   rank: "Kingdom", domain: "Bathosedia", meaning: "Nitrogen consumers", start: 3200, parent: "Bathosedia", side: "right", col: 7,
+  { name: "Nitrophagia",   rank: "Kingdom", domain: "Bathosedia", meaning: "Nitrogen consumers", start: 3200, parent: "Bathosedia", side: "right", col: 7.2,
     species: "Nitrophyx minor", link: SITE + "encyclopedia/bathosedia" },
 
   { name: "Omnisedia",     rank: "Domain",  domain: "Omnisedia", meaning: "All-dwellers", start: 2500, parent: "Meiophagia", side: "right", col: 2,
@@ -112,7 +112,7 @@ const GROUPS = [
     species: "Megalocyta vorax", note: "A large Meiophagian swallowed a Sulfurphagian that survived inside it.", link: SITE + "encyclopedia/omnisedia" },
   { name: "Xenotheria",    rank: "Kingdom", domain: "Omnisedia", meaning: "Alien beasts", start: 2300, parent: "Omnisedia", side: "right", col: 3,
     species: "Vorocyta coccinea", link: SITE + "encyclopedia/omnisedia" },
-  { name: "Minovenatoria", rank: "Phylum",  domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4,
+  { name: "Minovenatoria", rank: "Phylum",  domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4.2,
     species: "Amorphothera velox", link: SITE + "encyclopedia/omnisedia" },
   { name: "Cyanostromia",  rank: "Kingdom", domain: "Omnisedia", meaning: "Blue mats", start: 2000, parent: "Omnisedia", side: "left", col: 2,
     partner: "Photophagia", partnerLabel: "Photophagia-Omnisedia endosymbiosis",
@@ -163,7 +163,7 @@ const ICE_AGES = [
 const ICE_COLOR = "#b5e4f5", ICE_EDGE = "#5aa9c8";
 const BG = "#f5f6f7";
 
-const COL_W = 172, PAD_X = 30, DOT_R = 5, GAP = 7, IMG_W = 150, IMG_H = 90, BOX_W = 154, BOX_H = 52;
+let COL_W = 172; const PAD_X = 40, DOT_R = 5, GAP = 7, IMG_W = 150, IMG_H = 90, BOX_W = 186, BOX_H = 62;
 const BLOCK_H = GAP + IMG_H + 5 + BOX_H;
 const FONT = '"Open Sans", Arial, sans-serif', HEAD = 'Oswald, "Arial Narrow", Arial, sans-serif';
 
@@ -185,7 +185,7 @@ function place(n) {
   const right = n.kids.filter(k => k.side !== "left");
   left.forEach(place); n.col = nextCol++; right.forEach(place);
 }
-if (!fullTree) nodes.filter(n => !n.par).forEach(place);
+if (!fullTree) { COL_W = BOX_W + 26; nodes.filter(n => !n.par).forEach(place); }
 const nCols = Math.max(...nodes.map(n => n.col)) + 1;
 nodes.forEach(n => {
   n.x = PAD_X + n.col * COL_W + COL_W / 2;
@@ -347,10 +347,10 @@ function render(c, v) {
     }
     const st = RANK_STYLE[n.rank] || RANK_STYLE.Clade, by = iy + IMG_H + 5, bx = n.x - BOX_W / 2;
     c.save(); c.shadowColor = "rgba(0,0,0,0.18)"; c.shadowBlur = 6 * dpr * Math.min(1, zoom); c.shadowOffsetY = 2 * dpr * Math.min(1, zoom);
-    c.fillStyle = st.fill; roundRect(c, bx, by, BOX_W, BOX_H, 7); c.fill(); c.restore();
+    c.fillStyle = st.fill; roundRect(c, bx, by, BOX_W, BOX_H, 8); c.fill(); c.restore();
     c.fillStyle = st.text; c.textAlign = "center"; c.textBaseline = "alphabetic";
-    fitText(c, n.name, BOX_W - 14, 17, 700, "italic"); c.fillText(n.name, n.x, by + 23);
-    fitText(c, n.meaning, BOX_W - 14, 13, 400, ""); c.globalAlpha = 0.92; c.fillText(n.meaning, n.x, by + 41); c.globalAlpha = 1;
+    fitText(c, n.name, BOX_W - 16, 21, 700, "italic"); c.fillText(n.name, n.x, by + 28);
+    fitText(c, n.meaning, BOX_W - 16, 15, 400, ""); c.globalAlpha = 0.92; c.fillText(n.meaning, n.x, by + 50); c.globalAlpha = 1;
     n.hit = { x0: Math.min(bx, n.x - IMG_W / 2), x1: Math.max(bx + BOX_W, n.x + IMG_W / 2), y0: y - DOT_R - 2, y1: by + BOX_H };
   });
 
