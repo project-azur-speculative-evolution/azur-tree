@@ -340,18 +340,34 @@ function render(c, v) {
     c.textAlign = m.side === "left" ? "right" : "left";
     c.fillText(m.label, n.x + (m.side === "left" ? -12 : 12), y);
   }));
-  /* partner labels, beside the dashed line near the new group */
+  /* partner labels: placed along the dashed line where they do not cover a group or another label */
+  const blocks = nodes.map(n => ({ x0: n.x - Math.max(BOX_W, IMG_W) / 2 - 4, x1: n.x + Math.max(BOX_W, IMG_W) / 2 + 4, y0: Y(n.start) - 8, y1: Y(n.start) + BLOCK_H + 4 }));
+  const placed = [];
+  const hits = (r, list) => list.some(b => r.x0 < b.x1 && r.x1 > b.x0 && r.y0 < b.y1 && r.y1 > b.y0);
+  c.font = `italic 600 12px ${FONT}`; c.textAlign = "center"; c.textBaseline = "middle";
   nodes.filter(n => n.curve).forEach(n => {
-    const [ax, ay, bx, by, cx, cy, dx2, dy2] = n.curve, u = 0.62;
-    const bz = (a, b, c2, d) => (1 - u) ** 3 * a + 3 * (1 - u) ** 2 * u * b + 3 * (1 - u) * u * u * c2 + u ** 3 * d;
-    const x = bz(ax, bx, cx, dx2), y = bz(ay, by, cy, dy2);
+    const [ax, ay, bx, by, cx, cy, dx2, dy2] = n.curve;
     const words = (n.partnerLabel || "Endosymbiosis").split(" ");
     const lines = words.length > 1 ? [words.slice(0, -1).join(" "), words[words.length - 1]] : words;
-    c.font = `italic 600 12px ${FONT}`; c.textAlign = "center"; c.textBaseline = "middle";
+    const w = Math.max(...lines.map(t => c.measureText(t).width)) + 8, h = lines.length * 14 + 4;
+    let best = null;
+    for (const u of [0.62, 0.5, 0.75, 0.4, 0.3, 0.85, 0.2]) {
+      const bz = (a, b, c2, d) => (1 - u) ** 3 * a + 3 * (1 - u) ** 2 * u * b + 3 * (1 - u) * u * u * c2 + u ** 3 * d;
+      const x = bz(ax, bx, cx, dx2), y = bz(ay, by, cy, dy2);
+      for (const off of [0, -w / 2 - 6, w / 2 + 6]) {
+        const r = { x0: x + off - w / 2, x1: x + off + w / 2, y0: y - 10 - h, y1: y - 6 };
+        if (!hits(r, blocks) && !hits(r, placed)) { best = r; break; }
+      }
+      if (best) break;
+    }
+    if (!best) { const u = 0.62, bz = (a, b, c2, d) => (1 - u) ** 3 * a + 3 * (1 - u) ** 2 * u * b + 3 * (1 - u) * u * u * c2 + u ** 3 * d;
+      const x = bz(ax, bx, cx, dx2), y = bz(ay, by, cy, dy2); best = { x0: x - w / 2, x1: x + w / 2, y0: y - 10 - h, y1: y - 6 }; }
+    placed.push(best);
+    const xm = (best.x0 + best.x1) / 2;
     lines.forEach((t, i) => {
-      const yy = y - 10 - (lines.length - 1 - i) * 14;
-      c.lineWidth = 4; c.strokeStyle = BG; c.strokeText(t, x, yy);
-      c.fillStyle = "#3d4850"; c.fillText(t, x, yy);
+      const yy = best.y1 - 4 - (lines.length - 1 - i) * 14 - 5;
+      c.lineWidth = 4; c.strokeStyle = BG; c.strokeText(t, xm, yy);
+      c.fillStyle = "#3d4850"; c.fillText(t, xm, yy);
     });
   });
   /* start dots, pictures and name boxes */
