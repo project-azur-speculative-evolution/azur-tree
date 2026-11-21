@@ -181,14 +181,21 @@ const node = {}; nodes.forEach(n => node[n.name] = n);
 function shownParent(g) { let p = g.parent; while (p && !node[p]) p = byName[p] ? byName[p].parent : null; return p ? node[p] : null; }
 nodes.forEach(n => { n.par = shownParent(n); n.kids = []; });
 nodes.forEach(n => { if (n.par) n.par.kids.push(n); });
+/* small trees keep the full tree's arrangement, with empty columns removed and a little more room */
 const fullTree = S.SHOW === "all" && nodes.every(n => n.col != null);
+const manualCols = nodes.every(n => n.col != null);
+if (manualCols && !fullTree) {
+  const used = [...new Set(nodes.map(n => Math.floor(n.col)))].sort((a, b) => a - b);
+  nodes.forEach(n => { n.col = used.indexOf(Math.floor(n.col)) + (n.col - Math.floor(n.col)); });
+  COL_W = BOX_W + 26;
+}
 let nextCol = 0;
 function place(n) {
   const left = n.kids.filter(k => k.side === "left").reverse();
   const right = n.kids.filter(k => k.side !== "left");
   left.forEach(place); n.col = nextCol++; right.forEach(place);
 }
-if (!fullTree) { COL_W = BOX_W + 26; nodes.filter(n => !n.par).forEach(place); }
+if (!manualCols) { COL_W = BOX_W + 26; nodes.filter(n => !n.par).forEach(place); }
 const nCols = Math.max(...nodes.map(n => n.col)) + 1;
 nodes.forEach(n => {
   n.x = PAD_X + n.col * COL_W + COL_W / 2;
