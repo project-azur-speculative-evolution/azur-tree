@@ -52,7 +52,7 @@
     <button id="key" title="Show or hide the legend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="5" width="5" height="4" rx="1"/><rect x="4" y="15" width="5" height="4" rx="1"/><path d="M12 7h8M12 17h8"/></svg></button>
     <button id="png" title="Save as image (PNG)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
   </div>
-  <div class="hint" id="hint">Drag or scroll to move &middot; pinch or Ctrl + scroll to zoom &middot; click a group for details</div>
+  <div class="hint" id="hint">Drag to move &middot; scroll or pinch to zoom &middot; click a group for details</div>
   <div id="card" hidden></div>
   <div id="shot" hidden></div>
 </div>
@@ -480,8 +480,8 @@ cv.addEventListener("pointercancel", endPointer);
 cv.addEventListener("wheel", e => {
   e.preventDefault(); hideHint();
   const r = cv.getBoundingClientRect(), k = e.deltaMode === 1 ? 30 : 1;
-  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * k * 0.004));
-  else { tx -= (e.shiftKey ? e.deltaY : e.deltaX) * k; ty -= (e.shiftKey ? 0 : e.deltaY) * k; requestDraw(); }
+  /* the wheel zooms; a trackpad pinch arrives as Ctrl + wheel with small steps */
+  zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * k * (e.ctrlKey ? 0.01 : 0.0018)));
 }, { passive: false });
 cv.addEventListener("dblclick", e => { const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, 1.8); });
 document.getElementById("zin").onclick = () => zoomAt(W / 2, H / 2, 1.35);
