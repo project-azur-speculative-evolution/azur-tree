@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azur - Tree of Life</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Oswald:wght@500&display=swap">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; }
+  #wrap { position: relative; width: 100%; height: 100vh; min-height: 320px; overflow: hidden; background: #f5f6f7;
+          font-family: "Open Sans", Arial, sans-serif; color: #212121; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #wrap:fullscreen { height: 100%; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  .tools { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .tools button { width: 36px; height: 36px; border: 1px solid #c9d0d6; border-radius: 8px; background: rgba(255,255,255,0.95);
+                  color: #33414c; font: 600 18px/1 "Open Sans", Arial, sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .tools button:hover { background: #fff; border-color: #8fa0ad; }
+  .tools svg { width: 18px; height: 18px; }
+  .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(255,255,255,0.92); border: 1px solid #d5dbe0;
+          border-radius: 14px; padding: 4px 12px; font-size: 12px; color: #4f5b63; white-space: nowrap; transition: opacity 0.6s; pointer-events: none; }
+  .hint.gone { opacity: 0; }
+  #card { position: absolute; top: 10px; max-width: 300px; background: #fff; border: 1px solid #d5dbe0; border-radius: 10px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 12px 14px 12px 14px; font-size: 13px; line-height: 1.45; }
+  #card[hidden] { display: none; }
+  #card .name { font-size: 18px; font-weight: 700; font-style: italic; margin-right: 18px; }
+  #card .meaning { font-style: italic; color: #4f5b63; margin-bottom: 6px; }
+  #card .rank { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff;
+                border-radius: 4px; padding: 1px 6px; margin-bottom: 6px; }
+  #card p { margin: 4px 0; }
+  #card a { color: #226e93; font-weight: 600; text-decoration: none; }
+  #card a:hover { text-decoration: underline; }
+  #card .close { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 18px; color: #6b7780; cursor: pointer; }
+  #shot { position: absolute; inset: 0; background: rgba(20,26,31,0.75); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; box-sizing: border-box; }
+  #shot[hidden] { display: none; }
+  #shot img { max-width: 100%; max-height: calc(100% - 90px); background: #fff; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.4); }
+  #shot .row { display: flex; gap: 8px; }
+  #shot a, #shot button { font: 600 14px "Open Sans", Arial, sans-serif; border-radius: 8px; padding: 8px 14px; cursor: pointer; text-decoration: none; }
+  #shot a { background: #226e93; color: #fff; border: 1px solid #226e93; }
+  #shot button { background: #fff; color: #33414c; border: 1px solid #c9d0d6; }
+  #shot .note { color: #e8edf0; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="tree"></canvas>
+  <div class="tools">
+    <button id="zin" title="Zoom in">+</button>
+    <button id="zout" title="Zoom out">&minus;</button>
+    <button id="fit" title="Show the whole tree"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="full" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M4 4l6 6M20 4l-6 6M4 20l6-6M20 20l-6-6"/></svg></button>
+    <button id="key" title="Show or hide the legend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="5" width="5" height="4" rx="1"/><rect x="4" y="15" width="5" height="4" rx="1"/><path d="M12 7h8M12 17h8"/></svg></button>
+    <button id="png" title="Save as image (PNG)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+  </div>
+  <div class="hint" id="hint">Drag or scroll to move &middot; pinch or Ctrl + scroll to zoom &middot; click a group for details</div>
+  <div id="card" hidden></div>
+  <div id="shot" hidden></div>
+</div>
+<script>
+/* =====================================================================
+   AZUR TREE OF LIFE
+   Everything you may want to change is in GROUPS and MARKERS.
+   Pictures go in the images folder. Times are in millions of years ago
+   (2300 = 2.3 billion).
+   ===================================================================== */
+
+/* Settings come from the end of the link, for example
+   .../azur-tree/?show=Omnisedia,Xenotheria,Minovenatoria&until=2050
+   show  = which groups to show (all of them if left out)
+   until = youngest time shown, in millions of years ago (740 if left out)
+   from  = oldest time shown (automatic if left out)                     */
+const params = new URLSearchParams(location.search);
+const SETTINGS = {
+  SHOW: params.get("show") ? params.get("show").split(",").map(x => x.trim()).filter(Boolean) : "all",
+  FROM: params.get("from") ? +params.get("from") : null,
+  UNTIL: params.get("until") ? +params.get("until") : 740,
+  SCALE: 1,                    // pixels per million years at 100% zoom
+  IMAGE_PATH: "images/",       // pictures live in the images folder next to this file
+  LEGEND: params.get("legend") !== "0"
+};
+
+/* ===== GROUPS =====
+   parent  = the group it branches from; side = "left" or "right" of the parent (used for small trees)
+   col     = column in the full tree (0 = far left); a group above its parent in the same column continues its line
+   partner = a second lineage that joined through endosymbiosis (dashed line from its box)
+   species = representative species; its picture is images/<genus>-<first two letters of species>-tree.webp (or .png)
+             groups without a species use images/<group>-xx-tree
+   link    = page that opens from the group's card                                                        */
+const SITE = "https://sites.google.com/view/project-azur/";
+const GROUPS = [
+  { name: "Protovidea",    rank: "Ancestor", domain: "Protovidea", meaning: "The first to see", start: 3800, col: 3,
+    note: "The last universal common ancestor (LUCA) of all Azurian life.", link: SITE + "the-first-three-eons/primomundus" },
+
+  { name: "Heliosedia",    rank: "Domain",  domain: "Heliosedia", meaning: "Light-dwellers", start: 3700, parent: "Protovidea", side: "left", col: 1,
+    species: "Parvuscula heliopigmentum", link: SITE + "encyclopedia/heliosedia" },
+  { name: "Photophagia",   rank: "Kingdom", domain: "Heliosedia", meaning: "Light consumers", start: 2900, parent: "Heliosedia", side: "left", col: 0,
+    species: "Photobulbia magnaoxygena", link: SITE + "encyclopedia/heliosedia" },
+  { name: "Meiophagia",    rank: "Kingdom", domain: "Heliosedia", meaning: "Lesser consumers", start: 2950, parent: "Heliosedia", side: "right", col: 2,
+    species: "Venatropha prima", link: SITE + "encyclopedia/heliosedia" },
+
+  { name: "Bathosedia",    rank: "Domain",  domain: "Bathosedia", meaning: "Deep-dwellers", start: 3700, parent: "Protovidea", side: "right", col: 5,
+    species: "Thiovulcanus pusillus", link: SITE + "encyclopedia/bathosedia" },
+  { name: "Sulfurphagia",  rank: "Kingdom", domain: "Bathosedia", meaning: "Sulfur consumers", start: 3200, parent: "Bathosedia", side: "left", col: 4,
+    link: SITE + "encyclopedia/bathosedia" },
+  { name: "Methanophagia", rank: "Kingdom", domain: "Bathosedia", meaning: "Methane consumers", start: 3200, parent: "Bathosedia", side: "right", col: 6,
+    species: "Methanarcha simplex", link: SITE + "encyclopedia/bathosedia" },
+  { name: "Nitrophagia",   rank: "Kingdom", domain: "Bathosedia", meaning: "Nitrogen consumers", start: 3200, parent: "Bathosedia", side: "right", col: 7,
+    species: "Nitrophyx minor", link: SITE + "encyclopedia/bathosedia" },
+
+  { name: "Omnisedia",     rank: "Domain",  domain: "Omnisedia", meaning: "All-dwellers", start: 2500, parent: "Meiophagia", side: "right", col: 2,
+    partner: "Sulfurphagia", partnerLabel: "Meiophagia-Sulfurphagia endosymbiosis",
+    species: "Megalocyta vorax", note: "A large Meiophagian swallowed a Sulfurphagian that survived inside it.", link: SITE + "encyclopedia/omnisedia" },
+  { name: "Xenotheria",    rank: "Kingdom", domain: "Omnisedia", meaning: "Alien beasts", start: 2300, parent: "Omnisedia", side: "right", col: 3,
+    species: "Vorocyta coccinea", link: SITE + "encyclopedia/omnisedia" },
+  { name: "Minovenatoria", rank: "Phylum",  domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4,
+    species: "Amorphothera velox", link: SITE + "encyclopedia/omnisedia" },
+  { name: "Cyanostromia",  rank: "Kingdom", domain: "Omnisedia", meaning: "Blue mats", start: 2000, parent: "Omnisedia", side: "left", col: 2,
+    partner: "Photophagia", partnerLabel: "Photophagia-Omnisedia endosymbiosis",
+    species: "Octocyta marina", note: "Basal Omnisedians took in Photophagians, which became their azuroplasts.", link: SITE + "encyclopedia/omnisedia" },
+  { name: "Aquasilvia",    rank: "Phylum",  domain: "Omnisedia", meaning: "Water forests", start: 1000, parent: "Cyanostromia", side: "left", col: 2,
+    link: SITE + "encyclopedia/omnisedia" },
+
+  { name: "Necrosedia",    rank: "Domain",  domain: "Necrosedia", meaning: "Death-dwellers", start: 2500, parent: "Methanophagia", side: "right", col: 6,
+    partner: "Meiophagia", partnerLabel: "Meiophagia-Methanophagia endosymbiosis",
+    species: "Saprocyta primaeva", note: "Small Meiophagians invaded a Methanophagian host and became its paraorganelles.", link: SITE + "encyclopedia/necrosedia" },
+  { name: "Psammothecia",  rank: "Clade",   domain: "Necrosedia", meaning: "Sand shells", start: 2000, parent: "Necrosedia", side: "right", col: 7,
+    species: "Arenotheca gigantea", link: SITE + "encyclopedia/necrosedia" },
+  { name: "Thanospeira",   rank: "Kingdom", domain: "Necrosedia", meaning: "Death spirals", start: 760, parent: "Necrosedia", side: "right", col: 6,
+    link: SITE + "encyclopedia/necrosedia" }
+];
+
+/* ===== MARKERS: events on a lineage that are not new groups ===== */
+const MARKERS = [
+  { on: "Xenotheria", time: 830, label: "First animals", side: "left" }
+];
+
+/* ===== LOOK ===== */
+const RANK_STYLE = {
+  Ancestor: { fill: "#4b5660", text: "#ffffff" },
+  Domain:   { fill: "#7a1230", text: "#ffffff" },
+  Kingdom:  { fill: "#9a4d14", text: "#ffffff" },
+  Phylum:   { fill: "#f0c63c", text: "#2b2b2b" },
+  Clade:    { fill: "#383838", text: "#ffffff" }
+};
+const LINE_COLOR = {
+  Protovidea: "#5b6670", Heliosedia: "#2c7fb0", Bathosedia: "#2f8a55", Omnisedia: "#c0870f", Necrosedia: "#b0386a"
+};
+const EONS = [
+  { name: "Planetogenic Eon", start: 5100, end: 4200, color: "#c0562e" },
+  { name: "Primomundus Eon",  start: 4200, end: 2690, color: "#3fa862" },
+  { name: "Protogene Eon",    start: 2690, end: 740,  color: "#2c8f9f" },
+  { name: "Multagene Eon",    start: 740,  end: 0,    color: "#5fb3dc" }
+];
+const ERAS = [
+  { name: "Early Protogene",  start: 2690, end: 2400, color: "#1b5c66" },
+  { name: "Middle Protogene", start: 2400, end: 900,  color: "#4fb3c1" },
+  { name: "Late Protogene",   start: 900,  end: 740,  color: "#8ed3dc" }
+];
+const ICE_AGES = [
+  { name: "First Great Glaciation",  start: 2600, end: 2400 },
+  { name: "Second Great Glaciation", start: 900,  end: 830 }
+];
+const ICE_COLOR = "#b5e4f5", ICE_EDGE = "#5aa9c8";
+const BG = "#f5f6f7";
+
+const COL_W = 172, PAD_X = 30, DOT_R = 5, GAP = 7, IMG_W = 150, IMG_H = 90, BOX_W = 154, BOX_H = 52;
+const BLOCK_H = GAP + IMG_H + 5 + BOX_H;
+const FONT = '"Open Sans", Arial, sans-serif', HEAD = 'Oswald, "Arial Narrow", Arial, sans-serif';
+
+/* ===== LAYOUT ===== */
+const byName = {};
+GROUPS.forEach(g => byName[g.name] = g);
+const S = SETTINGS;
+const UNTIL = S.UNTIL;
+const visibleSet = new Set(S.SHOW === "all" ? GROUPS.filter(g => g.start >= UNTIL).map(g => g.name) : S.SHOW);
+const nodes = GROUPS.filter(g => visibleSet.has(g.name)).map(g => Object.assign({}, g));
+const node = {}; nodes.forEach(n => node[n.name] = n);
+function shownParent(g) { let p = g.parent; while (p && !node[p]) p = byName[p] ? byName[p].parent : null; return p ? node[p] : null; }
+nodes.forEach(n => { n.par = shownParent(n); n.kids = []; });
+nodes.forEach(n => { if (n.par) n.par.kids.push(n); });
+const fullTree = S.SHOW === "all" && nodes.every(n => n.col != null);
+let nextCol = 0;
+function place(n) {
+  const left = n.kids.filter(k => k.side === "left").reverse();
+  const right = n.kids.filter(k => k.side !== "left");
+  left.forEach(place); n.col = nextCol++; right.forEach(place);
+}
+if (!fullTree) nodes.filter(n => !n.par).forEach(place);
+const nCols = Math.max(...nodes.map(n => n.col)) + 1;
+nodes.forEach(n => {
+  n.x = PAD_X + n.col * COL_W + COL_W / 2;
+  n.partnerNode = n.partner && node[n.partner] ? node[n.partner] : null;
+  n.marks = MARKERS.filter(m => m.on === n.name && m.time >= UNTIL && m.time < n.start);
+});
+/* a line only leads to what the group evolved into: its youngest branch, or a marker such as the first animals */
+nodes.forEach(n => {
+  const tops = n.kids.map(k => k.col === n.col ? (k.start + (BLOCK_H + 2) / S.SCALE) : k.start).concat(n.marks.map(m => m.time));
+  n.stop = tops.length ? Math.min(...tops) : null;
+});
+const oldest = Math.max(...nodes.map(n => n.start));
+const T_TOP = UNTIL - 50 / S.SCALE;
+const T_BOTTOM = S.FROM || (oldest + (BLOCK_H + 34) / S.SCALE);
+const WORLD_W = PAD_X * 2 + nCols * COL_W;
+const WORLD_H = (T_BOTTOM - T_TOP) * S.SCALE;
+const Y = t => (t - T_TOP) * S.SCALE;
+
+/* ===== IMAGES ===== */
+const imgs = {};
+function imageName(n) {
+  if (!n.species) return n.name.toLowerCase() + "-xx-tree";
+  const [g, sp] = n.species.toLowerCase().split(/\s+/);
+  return g + "-" + sp.slice(0, 2) + "-tree";
+}
+nodes.forEach(n => {
+  const im = new Image(), base = S.IMAGE_PATH + imageName(n);
+  im.onload = () => { imgs[n.name] = im; requestDraw(); };
+  im.onerror = () => { if (!im.triedPng) { im.triedPng = true; im.src = base + ".png"; } };
+  im.src = base + ".webp";
+});
+
+/* ===== VIEW ===== */
+const wrap = document.getElementById("wrap"), cv = document.getElementById("tree"), ctx = cv.getContext("2d");
+let W = 0, H = 0, dpr = 1, zoom = 1, tx = 0, ty = 0, legendOn = true;
+function axisW() { return W < 560 ? 92 : 118; }
+function narrow() { return W < 560; }
+
+function resize() {
+  const r = wrap.getBoundingClientRect();
+  W = Math.max(1, r.width); H = Math.max(1, r.height); dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  requestDraw();
+}
+function fit() {
+  const aw = axisW(), m = 16;
+  zoom = Math.min((W - aw - m * 2) / WORLD_W, (H - m * 2 - 40) / WORLD_H);
+  zoom = Math.max(0.06, Math.min(1.25, zoom));
+  tx = aw + m + Math.max(0, (W - aw - m * 2 - WORLD_W * zoom) / 2);
+  ty = 46 + Math.max(0, (H - 46 - m - WORLD_H * zoom) / 2);
+  requestDraw();
+}
+function startView() {
+  const aw = axisW(), m = 16;
+  const all = Math.min((W - aw - m * 2) / WORLD_W, (H - m * 2 - 40) / WORLD_H);
+  if (all >= 0.45 || params.get("view") === "fit") { fit(); return; }
+  /* tall tree: readable zoom, starting at the root */
+  zoom = Math.min(1, Math.max(0.45, (W - aw - m * 2) / WORLD_W));
+  const root = nodes.find(n => !n.par) || nodes[0];
+  tx = WORLD_W * zoom <= W - aw - m * 2 ? aw + m + (W - aw - m * 2 - WORLD_W * zoom) / 2 : (aw + (W - aw) / 2) - root.x * zoom;
+  ty = H - 16 - WORLD_H * zoom;
+  requestDraw();
+}
+function clampView() {
+  const aw = axisW(), keep = 90;
+  tx = Math.min(W - keep, Math.max(aw + keep - WORLD_W * zoom, tx));
+  ty = Math.min(H - keep, Math.max(keep - WORLD_H * zoom, ty));
+}
+function zoomAt(sx, sy, f) {
+  const nz = Math.max(0.06, Math.min(3, zoom * f));
+  const wx = (sx - tx) / zoom, wy = (sy - ty) / zoom;
+  zoom = nz; tx = sx - wx * zoom; ty = sy - wy * zoom; requestDraw();
+}
+let drawQueued = false;
+function requestDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; clampView(); render(ctx, { W, H, zoom, tx, ty, dpr, aw: axisW(), narrow: narrow() }); }); } }
+
+/* ===== DRAWING ===== */
+function fmtTime(t) {
+  if (t >= 1000) { const b = t / 1000; return (Number.isInteger(b * 10) ? b.toFixed(1) : String(+b.toFixed(2))) + " billion"; }
+  return t + " million";
+}
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function fitText(c, text, maxW, size, weight, style) {
+  let s = size;
+  do { c.font = `${style || ""} ${weight} ${s}px ${FONT}`; s -= 0.5; } while (c.measureText(text).width > maxW && s > 8);
+}
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+function render(c, v) {
+  const { W, H, zoom, tx, ty, dpr, aw } = v;
+  const lw = px => Math.max(px, 1.1 / zoom);            // keep lines visible when zoomed out
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = BG; c.fillRect(0, 0, W, H);
+
+  /* --- world space --- */
+  c.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * tx, dpr * ty);
+  const wx0 = (0 - tx) / zoom, wx1 = (W - tx) / zoom;
+  EONS.forEach(e => {
+    const top = Math.max(Y(e.end), 0), bot = Math.min(Y(e.start), WORLD_H);
+    if (bot > top) { c.fillStyle = hexA(e.color, 0.07); c.fillRect(wx0, top, wx1 - wx0, bot - top); }
+  });
+  EONS.forEach(e => { const y = Y(e.start); if (y > 0 && y < WORLD_H) { c.fillStyle = hexA(e.color, 0.35); c.fillRect(wx0, y - lw(1) / 2, wx1 - wx0, lw(1)); } });
+  if (UNTIL === 740) {
+    c.save(); c.strokeStyle = hexA("#5fb3dc", 0.9); c.lineWidth = lw(2); c.setLineDash([10, 7]);
+    c.beginPath(); c.moveTo(wx0, Y(740)); c.lineTo(wx1, Y(740)); c.stroke(); c.restore();
+  }
+
+  /* lines and branch connectors */
+  c.lineCap = "round"; c.lineJoin = "round";
+  nodes.forEach(n => {
+    const col = LINE_COLOR[n.domain] || "#5b6670";
+    c.strokeStyle = col; c.lineWidth = lw(3.2);
+    if (n.stop != null) { c.beginPath(); c.moveTo(n.x, Y(n.start)); c.lineTo(n.x, Y(n.stop)); c.stroke(); }
+    if (n.par && n.par.col !== n.col) { c.strokeStyle = LINE_COLOR[n.domain] || col; c.beginPath(); c.moveTo(n.par.x, Y(n.start)); c.lineTo(n.x, Y(n.start)); c.stroke(); }
+  });
+  /* endosymbiosis partners: a dashed line from the partner's box to the new group */
+  nodes.filter(n => n.partnerNode).forEach(n => {
+    const p = n.partnerNode, x0 = p.x, y0 = Y(p.start) - DOT_R - 3, x1 = n.x, y1 = Y(n.start), dx = x1 - x0, dy = y0 - y1;
+    c.save(); c.strokeStyle = LINE_COLOR[p.domain]; c.lineWidth = lw(2.4); c.setLineDash([7, 6]);
+    c.beginPath(); c.moveTo(x0, y0); c.bezierCurveTo(x0 + dx * 0.15, y0 - dy * 0.55, x1 - dx * 0.55, y1, x1 - Math.sign(dx) * (DOT_R + 2), y1); c.stroke(); c.restore();
+    n.curve = [x0, y0, x0 + dx * 0.15, y0 - dy * 0.55, x1 - dx * 0.55, y1, x1, y1];
+  });
+  /* markers */
+  nodes.forEach(n => n.marks.forEach(m => {
+    const y = Y(m.time), col = LINE_COLOR[n.domain];
+    c.fillStyle = "#fff"; c.strokeStyle = col; c.lineWidth = lw(2.5);
+    c.beginPath(); c.arc(n.x, y, 6, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.font = `italic 600 12px ${FONT}`; c.fillStyle = "#33414c"; c.textBaseline = "middle";
+    c.textAlign = m.side === "left" ? "right" : "left";
+    c.fillText(m.label, n.x + (m.side === "left" ? -12 : 12), y);
+  }));
+  /* partner labels, beside the dashed line near the new group */
+  nodes.filter(n => n.curve).forEach(n => {
+    const [ax, ay, bx, by, cx, cy, dx2, dy2] = n.curve, u = 0.62;
+    const bz = (a, b, c2, d) => (1 - u) ** 3 * a + 3 * (1 - u) ** 2 * u * b + 3 * (1 - u) * u * u * c2 + u ** 3 * d;
+    const x = bz(ax, bx, cx, dx2), y = bz(ay, by, cy, dy2);
+    const words = (n.partnerLabel || "Endosymbiosis").split(" ");
+    const lines = words.length > 1 ? [words.slice(0, -1).join(" "), words[words.length - 1]] : words;
+    c.font = `italic 600 12px ${FONT}`; c.textAlign = "center"; c.textBaseline = "middle";
+    lines.forEach((t, i) => {
+      const yy = y - 10 - (lines.length - 1 - i) * 14;
+      c.lineWidth = 4; c.strokeStyle = BG; c.strokeText(t, x, yy);
+      c.fillStyle = "#3d4850"; c.fillText(t, x, yy);
+    });
+  });
+  /* start dots, pictures and name boxes */
+  nodes.forEach(n => {
+    const y = Y(n.start), col = LINE_COLOR[n.domain] || "#5b6670";
+    c.fillStyle = col; c.strokeStyle = "#fff"; c.lineWidth = 2;
+    c.beginPath(); c.arc(n.x, y, DOT_R, 0, Math.PI * 2); c.fill(); c.stroke();
+    const iy = y + GAP, im = imgs[n.name];
+    if (im && im.complete && im.naturalWidth) {
+      const s = Math.min(IMG_W / im.naturalWidth, IMG_H / im.naturalHeight);
+      const w = im.naturalWidth * s, h = im.naturalHeight * s;
+      c.drawImage(im, n.x - w / 2, iy + (IMG_H - h), w, h);
+    }
+    const st = RANK_STYLE[n.rank] || RANK_STYLE.Clade, by = iy + IMG_H + 5, bx = n.x - BOX_W / 2;
+    c.save(); c.shadowColor = "rgba(0,0,0,0.18)"; c.shadowBlur = 6 * dpr * Math.min(1, zoom); c.shadowOffsetY = 2 * dpr * Math.min(1, zoom);
+    c.fillStyle = st.fill; roundRect(c, bx, by, BOX_W, BOX_H, 7); c.fill(); c.restore();
+    c.fillStyle = st.text; c.textAlign = "center"; c.textBaseline = "alphabetic";
+    fitText(c, n.name, BOX_W - 14, 17, 700, "italic"); c.fillText(n.name, n.x, by + 23);
+    fitText(c, n.meaning, BOX_W - 14, 13, 400, ""); c.globalAlpha = 0.92; c.fillText(n.meaning, n.x, by + 41); c.globalAlpha = 1;
+    n.hit = { x0: Math.min(bx, n.x - IMG_W / 2), x1: Math.max(bx + BOX_W, n.x + IMG_W / 2), y0: y - DOT_R - 2, y1: by + BOX_H };
+  });
+
+  /* --- screen space: eon boundaries and the "you are here" chip --- */
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sy = t => ty + Y(t) * zoom;
+  const nameX = aw + 12;
+  c.textAlign = "left";
+  EONS.forEach((e, i) => {
+    const y = sy(e.start); const older = EONS[i - 1];
+    if (e.start > T_BOTTOM || e.start < T_TOP || y < 30 || y > H - 10) return;
+    c.font = `500 ${v.narrow ? 11 : 13}px ${HEAD}`;
+    c.lineWidth = 4; c.strokeStyle = BG;
+    if (e.start !== UNTIL) {
+      c.textBaseline = "bottom"; c.strokeText(e.name.toUpperCase() + "  \u2191", nameX, y - 4);
+      c.fillStyle = e.color; c.fillText(e.name.toUpperCase() + "  \u2191", nameX, y - 4);
+    }
+    if (older) { c.textBaseline = "top"; c.strokeText(older.name.toUpperCase() + "  \u2193", nameX, y + 4);
+      c.fillStyle = older.color; c.fillText(older.name.toUpperCase() + "  \u2193", nameX, y + 4); }
+  });
+  if (UNTIL === 740) {
+    const y = sy(740);
+    if (y > 30 && y < H) {
+      c.font = `600 ${v.narrow ? 11 : 12}px ${FONT}`; c.textBaseline = "bottom";
+      const txt = v.narrow ? "740 million years ago: the Plethorian Explosion" : "740 million years ago: the Plethorian Explosion. The tree continues in the Multagene.";
+      c.lineWidth = 4; c.strokeStyle = BG; c.strokeText(txt, nameX, y - 5);
+      c.fillStyle = "#3b88b3"; c.fillText(txt, nameX, y - 5);
+    }
+  }
+  if (!v.exporting) {
+    /* which eon and era is in the middle of the screen */
+    const tMid = Math.min(T_BOTTOM, Math.max(T_TOP, T_TOP + ((H / 2 - ty) / zoom) / S.SCALE));
+    const eon = EONS.find(e => tMid <= e.start && tMid > e.end), era = ERAS.find(e => tMid <= e.start && tMid > e.end);
+    if (eon) {
+      const txt = (era || eon).name.toUpperCase();
+      c.font = `500 ${v.narrow ? 11 : 13}px ${HEAD}`; c.textBaseline = "middle";
+      const w = c.measureText(txt).width + 26;
+      c.fillStyle = "rgba(255,255,255,0.94)"; c.strokeStyle = "#d5dbe0"; c.lineWidth = 1;
+      roundRect(c, nameX - 4, 10, w, 26, 13); c.fill(); c.stroke();
+      c.fillStyle = (era || eon).color; c.beginPath(); c.arc(nameX + 8, 23, 4.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#2f4a52"; c.fillText(txt, nameX + 18, 23.5);
+    }
+  }
+
+  /* --- screen space: the time axis on the left --- */
+  c.fillStyle = BG; c.fillRect(0, 0, aw, H);
+  c.fillStyle = "#d5dbe0"; c.fillRect(aw - 1, 0, 1, H);
+  const xLbl = aw - 44, xTick = aw - 40, xEon = aw - 30, xEra = aw - 22, xIce = aw - 11;
+  const bar = (t0, t1, x, w, col, edge) => {
+    const a = Math.max(sy(t1), sy(T_TOP)), b = Math.min(sy(t0), sy(T_BOTTOM));
+    if (b <= a) return; c.fillStyle = col; c.fillRect(x, a, w, b - a);
+    if (edge) { c.strokeStyle = edge; c.lineWidth = 1; c.strokeRect(x + 0.5, a + 0.5, w - 1, b - a - 1); }
+  };
+  EONS.forEach(e => bar(e.start, e.end, xEon, 6, e.color));
+  ERAS.forEach(e => bar(e.start, e.end, xEra, 9, e.color));
+  ICE_AGES.forEach(e => bar(e.start, e.end, xIce, 6, ICE_COLOR, ICE_EDGE));
+  const pxPerMy = S.SCALE * zoom;
+  const step = [25, 50, 100, 250, 500, 1000].find(s => s * pxPerMy >= (v.narrow ? 34 : 30)) || 1000;
+  c.font = `${v.narrow ? 10.5 : 11.5}px ${FONT}`; c.textAlign = "right"; c.textBaseline = "middle";
+  for (let t = Math.ceil(T_TOP / step) * step; t <= T_BOTTOM; t += step) {
+    const y = sy(t); if (y < 28 || y > H - 4) continue;
+    c.fillStyle = "#6b7780"; c.fillRect(xTick, y - 1, 8, 2);
+    c.fillStyle = "#4f5b63"; c.fillText(fmtTime(t), xLbl, y);
+  }
+  c.fillStyle = BG; c.fillRect(0, 0, aw - 1, 24);
+  c.font = `600 ${v.narrow ? 10 : 11}px ${FONT}`; c.fillStyle = "#33414c"; c.textAlign = "left"; c.textBaseline = "middle";
+  c.fillText("YEARS AGO", 8, 13);
+
+  /* --- legend --- */
+  if (S.LEGEND && (v.exporting || legendOn)) {
+    const ranks = Object.keys(RANK_STYLE).filter(r => nodes.some(n => n.rank === r));
+    const hasPartner = nodes.some(n => n.partnerNode);
+    const rows = ranks.length + (hasPartner ? 1 : 0);
+    const rh = v.narrow ? 16 : 20, lwid = v.narrow ? 118 : 150, lh = 12 + rows * rh, lx = W - lwid - 10, ly = H - lh - (v.exporting ? 10 : 44);
+    c.fillStyle = "rgba(255,255,255,0.93)"; c.strokeStyle = "#d5dbe0"; c.lineWidth = 1;
+    roundRect(c, lx, ly, lwid, lh, 8); c.fill(); c.stroke();
+    c.font = `${v.narrow ? 10.5 : 12}px ${FONT}`; c.textAlign = "left"; c.textBaseline = "middle";
+    ranks.forEach((r, i) => {
+      const yy = ly + 6 + rh / 2 + i * rh; c.fillStyle = RANK_STYLE[r].fill; roundRect(c, lx + 10, yy - 6, 22, 12, 3); c.fill();
+      c.fillStyle = "#33414c"; c.fillText(r, lx + 40, yy);
+    });
+    if (hasPartner) {
+      const yy = ly + 6 + rh / 2 + ranks.length * rh;
+      c.save(); c.setLineDash([4, 3]); c.strokeStyle = "#5b6670"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(lx + 10, yy); c.lineTo(lx + 32, yy); c.stroke(); c.restore();
+      c.fillStyle = "#33414c"; c.fillText("Endosymbiosis", lx + 40, yy);
+    }
+  }
+}
+
+/* ===== INTERACTION ===== */
+const pointers = new Map();
+let downAt = null, moved = 0, pinch = null;
+const hint = document.getElementById("hint");
+function hideHint() { hint.classList.add("gone"); }
+cv.addEventListener("pointerdown", e => {
+  cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: Date.now() }; moved = 0; cv.classList.add("dragging"); }
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; }
+});
+cv.addEventListener("pointermove", e => {
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId), cur = { x: e.clientX, y: e.clientY };
+  pointers.set(e.pointerId, cur);
+  const r = cv.getBoundingClientRect();
+  if (pointers.size === 1) {
+    tx += cur.x - prev.x; ty += cur.y - prev.y; moved += Math.abs(cur.x - prev.x) + Math.abs(cur.y - prev.y);
+    if (moved > 6) hideHint(); requestDraw();
+  } else if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    tx += cx - pinch.cx; ty += cy - pinch.cy; zoomAt(cx - r.left, cy - r.top, d / pinch.d);
+    pinch = { d, cx, cy }; moved += 10; hideHint();
+  }
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (pointers.size === 0) {
+    cv.classList.remove("dragging");
+    if (downAt && moved < 6 && Date.now() - downAt.t < 500) { const r = cv.getBoundingClientRect(); clickAt(e.clientX - r.left, e.clientY - r.top); }
+    downAt = null;
+  }
+}
+cv.addEventListener("pointerup", endPointer);
+cv.addEventListener("pointercancel", endPointer);
+cv.addEventListener("wheel", e => {
+  e.preventDefault(); hideHint();
+  const r = cv.getBoundingClientRect(), k = e.deltaMode === 1 ? 30 : 1;
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * k * 0.004));
+  else { tx -= (e.shiftKey ? e.deltaY : e.deltaX) * k; ty -= (e.shiftKey ? 0 : e.deltaY) * k; requestDraw(); }
+}, { passive: false });
+cv.addEventListener("dblclick", e => { const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, 1.8); });
+document.getElementById("zin").onclick = () => zoomAt(W / 2, H / 2, 1.35);
+document.getElementById("zout").onclick = () => zoomAt(W / 2, H / 2, 1 / 1.35);
+document.getElementById("fit").onclick = fit;
+document.getElementById("key").onclick = () => { legendOn = !legendOn; requestDraw(); };
+const fullBtn = document.getElementById("full");
+if (!document.fullscreenEnabled) fullBtn.style.display = "none";
+fullBtn.onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else wrap.requestFullscreen().catch(() => {}); };
+document.addEventListener("fullscreenchange", () => setTimeout(resize, 50));
+
+/* group card */
+const card = document.getElementById("card");
+function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]); }
+function clickAt(sx, sy) {
+  const wx = (sx - tx) / zoom, wy = (sy - ty) / zoom;
+  const n = nodes.find(n => n.hit && wx >= n.hit.x0 && wx <= n.hit.x1 && wy >= n.hit.y0 && wy <= n.hit.y1);
+  if (!n) { card.hidden = true; return; }
+  const st = RANK_STYLE[n.rank] || RANK_STYLE.Clade;
+  let html = `<button class="close" aria-label="Close">&times;</button>`;
+  html += `<div class="rank" style="background:${st.fill};color:${st.text}">${esc(n.rank)}</div>`;
+  html += `<div class="name">${esc(n.name)}</div><div class="meaning">${esc(n.meaning)}</div>`;
+  html += `<p>Appeared about ${esc(fmtTime(n.start))} years ago.</p>`;
+  const par = byName[n.parent];
+  if (par) html += `<p>${n.partner ? "Host" : "Branched from"}: <i>${esc(par.name)}</i></p>`;
+  if (n.species) html += `<p>Representative species: <i>${esc(n.species)}</i></p>`;
+  if (n.partner) html += `<p>Partner: <i>${esc(n.partner)}</i> (endosymbiosis)</p>`;
+  if (n.note) html += `<p>${esc(n.note)}</p>`;
+  if (n.link) html += `<p><a href="${esc(n.link)}" target="_blank" rel="noopener">Open in the Encyclopedia &rarr;</a></p>`;
+  card.innerHTML = html; card.hidden = false; card.style.left = (axisW() + 10) + "px";
+  card.querySelector(".close").onclick = () => card.hidden = true;
+}
+
+/* save as PNG */
+const shot = document.getElementById("shot");
+document.getElementById("png").onclick = () => {
+  const aw = 118, ew = aw + WORLD_W, eh = WORLD_H + 40;
+  const s = Math.min(2, Math.sqrt(16e6 / (ew * eh)));
+  const off = document.createElement("canvas"); off.width = Math.round(ew * s); off.height = Math.round(eh * s);
+  render(off.getContext("2d"), { W: ew, H: eh, zoom: 1, tx: aw, ty: 30, dpr: s, aw, narrow: false, exporting: true });
+  off.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    shot.innerHTML = `<img src="${url}" alt="Tree of life"><div class="row"><a href="${url}" download="azur-tree-of-life.png">Download PNG</a><button>Close</button></div>
+      <div class="note">If the download does not start, right-click the picture and choose "Save image as".</div>`;
+    shot.hidden = false;
+    shot.querySelector("button").onclick = () => { shot.hidden = true; URL.revokeObjectURL(url); };
+  }, "image/png");
+};
+
+window.addEventListener("resize", () => { const oldW = W; resize(); if (!oldW) startView(); });
+resize(); legendOn = !narrow(); startView();
+if (matchMedia("(pointer: coarse)").matches || narrow()) hint.textContent = "Drag to move \u00b7 pinch to zoom \u00b7 tap a group for details";
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestDraw());
+setTimeout(hideHint, 9000);
+</script>
+</body>
+</html>
