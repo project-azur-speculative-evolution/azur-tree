@@ -114,12 +114,12 @@ const GROUPS = [
     species: "Megalocyta vorax", note: "A large Meiophagian swallowed a Sulfurphagian that survived inside it." },
   { name: "Xenotheria",    rank: "Kingdom", domain: "Omnisedia", meaning: "Alien beasts", start: 2300, parent: "Omnisedia", side: "right", col: 3,
     species: "Vorocyta coccinea", speciesPage: true },
-  { name: "Minovenatoria", rank: "Phylum",  domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4.2,
+  { name: "Minovenatoria", rank: "Clade",   domain: "Omnisedia", meaning: "Small hunters", start: 2200, parent: "Xenotheria", side: "right", col: 4.2,
     species: "Amorphothera velox", speciesPage: true },
   { name: "Cyanostromia",  rank: "Kingdom", domain: "Omnisedia", meaning: "Blue mats", start: 2000, parent: "Omnisedia", side: "left", col: 2,
     partner: "Photophagia", partnerLabel: "Photophagia-Omnisedia endosymbiosis",
     species: "Octocyta marina", note: "Basal Omnisedians took in Photophagians, which became their azuroplasts.", speciesPage: true },
-  { name: "Aquasilvia",    rank: "Phylum",  domain: "Omnisedia", meaning: "Water forests", start: 1000, parent: "Cyanostromia", side: "left", col: 2,
+  { name: "Aquasilvia",    rank: "Clade",   domain: "Omnisedia", meaning: "Water forests", start: 1000, parent: "Cyanostromia", side: "left", col: 2,
     species: "Azurodictyon primigenium" },
 
   { name: "Necrosedia",    rank: "Domain",  domain: "Necrosedia", meaning: "Death-dwellers", start: 2500, parent: "Methanophagia", side: "right", col: 6,
@@ -136,20 +136,42 @@ const MARKERS = [
 ];
 
 /* ===== LOOK ===== */
-const RANK_STYLE = {
-  Ancestor: { fill: "#4b5660", text: "#ffffff" },
-  Domain:   { fill: "#7a0025", text: "#ffffff" },
-  Kingdom:  { fill: "#994f0e", text: "#ffffff" },
-  Phylum:   { fill: "#ffdc4a", text: "#2b2b2b" },
-  Class:    { fill: "#067429", text: "#ffffff" },
-  Order:    { fill: "#002157", text: "#ffffff" },
-  Family:   { fill: "#481ea4", text: "#ffffff" },
-  Genus:    { fill: "#9b7ae3", text: "#ffffff" },
-  Clade:    { fill: "#3b3b3b", text: "#ffffff" }
+/* ===== COLORS (owner's choice, 2026-11-24) =====
+   Boxes and lines take their kingdom's color. Domains use a dark shade,
+   clades a light tint of their kingdom (or of their domain if they have no kingdom). */
+const KINGDOM_COLOR = {
+  Photophagia: "#dba81f", Meiophagia: "#dba81f",
+  Sulfurphagia: "#5cc596", Nitrophagia: "#5cc596", Methanophagia: "#5cc596",
+  Cyanostromia: "#1f6bda", Xenotheria: "#e0313f", Thanospeira: "#852e83", Obitotheria: "#823d0d"
 };
-const LINE_COLOR = {
-  Protovidea: "#5b6670", Heliosedia: "#2c7fb0", Bathosedia: "#2f8a55", Omnisedia: "#c0870f", Necrosedia: "#b0386a"
+const KINGDOM_LABEL = {   // legend rows; kingdoms sharing a color share a row
+  "#dba81f": "Heliosedian kingdoms", "#5cc596": "Bathosedian kingdoms", "#1f6bda": "Cyanostromia",
+  "#e0313f": "Xenotheria", "#852e83": "Thanospeira", "#823d0d": "Obitotheria"
 };
+const DOMAIN_COLOR = { Heliosedia: "#8a6410", Bathosedia: "#1f7a52", Omnisedia: "#2f3a7a", Necrosedia: "#5a2a3a" };
+const ANCESTOR_COLOR = "#4b5660";
+const DARK_TEXT = new Set(["#dba81f", "#5cc596"]);
+function tint(hex, t) {
+  const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  return "#" + v.map(x => Math.round(x + (255 - x) * t).toString(16).padStart(2, "0")).join("");
+}
+function homeOf(n) {   // nearest kingdom, or the domain if there is no kingdom
+  let k = n;
+  while (k && k.rank !== "Kingdom" && k.rank !== "Domain" && k.rank !== "Ancestor") k = GROUPS.find(g => g.name === k.parent);
+  return k;
+}
+function baseColor(n) {
+  const k = homeOf(n);
+  if (!k || k.rank === "Ancestor") return ANCESTOR_COLOR;
+  return k.rank === "Kingdom" ? KINGDOM_COLOR[k.name] : DOMAIN_COLOR[k.name];
+}
+function lineFor(n) { return n.rank === "Domain" ? DOMAIN_COLOR[n.name] : baseColor(n); }
+function styleFor(n) {
+  if (n.rank === "Ancestor") return { fill: ANCESTOR_COLOR, text: "#ffffff" };
+  if (n.rank === "Domain") return { fill: DOMAIN_COLOR[n.name], text: "#ffffff" };
+  if (n.rank === "Kingdom") { const f = KINGDOM_COLOR[n.name]; return { fill: f, text: DARK_TEXT.has(f) ? "#1e252b" : "#ffffff" }; }
+  return { fill: tint(baseColor(n), 0.5), text: "#1e252b" };
+}
 const EONS = [
   { name: "Planetogenic Eon", start: 5100, end: 4200, color: "#c0562e" },
   { name: "Primomundus Eon",  start: 4200, end: 2690, color: "#3fa862" },
@@ -321,21 +343,21 @@ function render(c, v) {
   /* lines and branch connectors */
   c.lineCap = "round"; c.lineJoin = "round";
   nodes.forEach(n => {
-    const col = LINE_COLOR[n.domain] || "#5b6670";
+    const col = lineFor(n);
     c.strokeStyle = col; c.lineWidth = lw(3.2);
     if (n.stop != null) { c.beginPath(); c.moveTo(n.x, Y(n.start)); c.lineTo(n.x, Y(n.stop)); c.stroke(); }
-    if (n.par && n.par.col !== n.col) { c.strokeStyle = LINE_COLOR[n.domain] || col; c.beginPath(); c.moveTo(n.par.x, Y(n.start)); c.lineTo(n.x, Y(n.start)); c.stroke(); }
+    if (n.par && n.par.col !== n.col) { c.strokeStyle = col; c.beginPath(); c.moveTo(n.par.x, Y(n.start)); c.lineTo(n.x, Y(n.start)); c.stroke(); }
   });
   /* endosymbiosis partners: a dashed line from the partner's box to the new group */
   nodes.filter(n => n.partnerNode).forEach(n => {
     const p = n.partnerNode, x0 = p.x, y0 = Y(p.start) - DOT_R - 3, x1 = n.x, y1 = Y(n.start), dx = x1 - x0, dy = y0 - y1;
-    c.save(); c.strokeStyle = LINE_COLOR[p.domain]; c.lineWidth = lw(2.4); c.setLineDash([7, 6]);
+    c.save(); c.strokeStyle = lineFor(p); c.lineWidth = lw(2.4); c.setLineDash([7, 6]);
     c.beginPath(); c.moveTo(x0, y0); c.bezierCurveTo(x0 + dx * 0.15, y0 - dy * 0.55, x1 - dx * 0.55, y1, x1 - Math.sign(dx) * (DOT_R + 2), y1); c.stroke(); c.restore();
     n.curve = [x0, y0, x0 + dx * 0.15, y0 - dy * 0.55, x1 - dx * 0.55, y1, x1, y1];
   });
   /* markers */
   nodes.forEach(n => n.marks.forEach(m => {
-    const y = Y(m.time), col = LINE_COLOR[n.domain];
+    const y = Y(m.time), col = lineFor(n);
     c.fillStyle = "#fff"; c.strokeStyle = col; c.lineWidth = lw(2.5);
     c.beginPath(); c.arc(n.x, y, 6, 0, Math.PI * 2); c.fill(); c.stroke();
     c.font = `italic 600 12px ${FONT}`; c.fillStyle = "#33414c"; c.textBaseline = "middle";
@@ -374,7 +396,7 @@ function render(c, v) {
   });
   /* start dots, pictures and name boxes */
   nodes.forEach(n => {
-    const y = Y(n.start), col = LINE_COLOR[n.domain] || "#5b6670";
+    const y = Y(n.start), col = lineFor(n);
     c.fillStyle = col; c.strokeStyle = "#fff"; c.lineWidth = 2;
     c.beginPath(); c.arc(n.x, y, DOT_R, 0, Math.PI * 2); c.fill(); c.stroke();
     const iy = y + GAP, im = imgs[n.name];
@@ -383,7 +405,7 @@ function render(c, v) {
       const w = im.naturalWidth * s, h = im.naturalHeight * s;
       c.drawImage(im, n.x - w / 2, iy + (IMG_H - h), w, h);
     }
-    const st = RANK_STYLE[n.rank] || RANK_STYLE.Clade, by = iy + IMG_H + 5, bx = n.x - BOX_W / 2;
+    const st = styleFor(n), by = iy + IMG_H + 5, bx = n.x - BOX_W / 2;
     c.save(); c.shadowColor = "rgba(0,0,0,0.18)"; c.shadowBlur = 6 * dpr * Math.min(1, zoom); c.shadowOffsetY = 2 * dpr * Math.min(1, zoom);
     c.fillStyle = st.fill; roundRect(c, bx, by, BOX_W, BOX_H, 8); c.fill(); c.restore();
     c.fillStyle = st.text; c.textAlign = "center"; c.textBaseline = "alphabetic";
@@ -459,23 +481,33 @@ function render(c, v) {
 
   /* --- legend --- */
   if (S.LEGEND && (v.exporting || legendOn)) {
-    const ranks = Object.keys(RANK_STYLE).filter(r => r !== "Ancestor" && nodes.some(n => n.rank === r));
+    const rows = [];
+    const kcols = [...new Set(nodes.filter(n => n.rank !== "Domain" && n.rank !== "Ancestor").map(n => { const k = homeOf(n); return k && k.rank === "Kingdom" ? KINGDOM_COLOR[k.name] : null; }).filter(Boolean))];
+    Object.keys(KINGDOM_LABEL).filter(col => kcols.includes(col)).forEach(col => rows.push({ sw: [col], label: KINGDOM_LABEL[col] }));
+    const doms = Object.keys(DOMAIN_COLOR).filter(d => nodes.some(n => n.rank === "Domain" && n.name === d));
+    if (doms.length) rows.push({ sw: doms.map(d => DOMAIN_COLOR[d]), label: doms.length > 1 ? "Domains" : "Domain" });
+    if (nodes.some(n => n.rank === "Clade")) rows.push({ sw: [tint("#7f8a94", 0.5)], label: "Clades: lighter shade" });
     const hasPartner = nodes.some(n => n.partnerNode);
-    const rows = ranks.length + (hasPartner ? 1 : 0);
-    const rh = v.narrow ? 16 : 20, lwid = v.narrow ? 118 : 150, lh = 12 + rows * rh, lx = W - lwid - 10, ly = H - lh - (v.exporting ? 10 : 44);
+    if (hasPartner) rows.push({ dash: true, label: "Endosymbiosis" });
+    c.font = `${v.narrow ? 10.5 : 12}px ${FONT}`; c.textAlign = "left"; c.textBaseline = "middle";
+    const swW = r => r.dash ? 22 : (r.sw.length === 1 ? 22 : r.sw.length * 10 + (r.sw.length - 1) * 2);
+    const sx = Math.max(...rows.map(swW)) + 18;
+    const rh = v.narrow ? 16 : 20, lwid = 10 + sx + Math.max(...rows.map(r => c.measureText(r.label).width)) + 12;
+    const lh = 12 + rows.length * rh, lx = W - lwid - 10, ly = H - lh - (v.exporting ? 10 : 44);
     c.fillStyle = "rgba(255,255,255,0.93)"; c.strokeStyle = "#d5dbe0"; c.lineWidth = 1;
     roundRect(c, lx, ly, lwid, lh, 8); c.fill(); c.stroke();
-    c.font = `${v.narrow ? 10.5 : 12}px ${FONT}`; c.textAlign = "left"; c.textBaseline = "middle";
-    ranks.forEach((r, i) => {
-      const yy = ly + 6 + rh / 2 + i * rh; c.fillStyle = RANK_STYLE[r].fill; roundRect(c, lx + 10, yy - 6, 22, 12, 3); c.fill();
-      c.fillStyle = "#33414c"; c.fillText(r, lx + 40, yy);
+    rows.forEach((r, i) => {
+      const yy = ly + 6 + rh / 2 + i * rh;
+      if (r.dash) {
+        c.save(); c.setLineDash([4, 3]); c.strokeStyle = "#5b6670"; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(lx + 10, yy); c.lineTo(lx + 32, yy); c.stroke(); c.restore();
+      } else if (r.sw.length === 1) {
+        c.fillStyle = r.sw[0]; roundRect(c, lx + 10, yy - 6, 22, 12, 3); c.fill();
+      } else {
+        r.sw.forEach((col, j) => { c.fillStyle = col; roundRect(c, lx + 10 + j * 12, yy - 6, 10, 12, 2); c.fill(); });
+      }
+      c.fillStyle = "#33414c"; c.fillText(r.label, lx + sx, yy);
     });
-    if (hasPartner) {
-      const yy = ly + 6 + rh / 2 + ranks.length * rh;
-      c.save(); c.setLineDash([4, 3]); c.strokeStyle = "#5b6670"; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(lx + 10, yy); c.lineTo(lx + 32, yy); c.stroke(); c.restore();
-      c.fillStyle = "#33414c"; c.fillText("Endosymbiosis", lx + 40, yy);
-    }
   }
 }
 
@@ -538,7 +570,7 @@ function clickAt(sx, sy) {
   const wx = (sx - tx) / zoom, wy = (sy - ty) / zoom;
   const n = nodes.find(n => n.hit && wx >= n.hit.x0 && wx <= n.hit.x1 && wy >= n.hit.y0 && wy <= n.hit.y1);
   if (!n) { card.hidden = true; return; }
-  const st = RANK_STYLE[n.rank] || RANK_STYLE.Clade;
+  const st = styleFor(n);
   let html = `<button class="close" aria-label="Close">&times;</button>`;
   html += `<div class="rank" style="background:${st.fill};color:${st.text}">${esc(n.rank)}</div>`;
   html += `<div class="name">${esc(n.name)}</div><div class="meaning">${esc(n.meaning)}</div>`;
